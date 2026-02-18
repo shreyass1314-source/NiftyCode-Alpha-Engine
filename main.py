@@ -8,15 +8,18 @@ app = FastAPI()
 def home():
     return {"status": "Alpha Engine Active"}
 
-@app.post("/generate")
+@app.get("/generate")
 def create_video(nifty_support: str, trigger: str, target: str):
-    # This script pulls the background and burns your text into the safe zone
+    # Load background and define subclip
     video = VideoFileClip("nifty_bg.mp4").subclip(0, 10)
     
+    # Text overlays with specific Safe Zone positioning
     txt_support = TextClip(f"Support: {nifty_support}", fontsize=70, color='white', font='Arial-Bold').set_position(('center', 400)).set_duration(10)
     txt_trigger = TextClip(f"Trigger: {trigger}", fontsize=70, color='yellow', font='Arial-Bold').set_position(('center', 600)).set_duration(10)
     txt_target = TextClip(f"Target: {target}", fontsize=70, color='lightgreen', font='Arial-Bold').set_position(('center', 800)).set_duration(10)
     
+    # Combine and render
     final = CompositeVideoClip([video, txt_support, txt_trigger, txt_target])
-    final.write_videofile("output_short.mp4", fps=24)
-    return {"message": "Video Generated Successfully"}
+    final.write_videofile("output_short.mp4", fps=24, codec="libx264")
+    
+    return {"message": "Video Generated Successfully. Access at /output_short.mp4"}
