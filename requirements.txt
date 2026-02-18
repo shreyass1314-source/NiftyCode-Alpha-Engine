@@ -2,6 +2,4 @@ fastapi
 uvicorn
 moviepy==1.0.3
 python-multipart
-proglog
-imageio==2.25.1
-imageio-ffmpeg==0.4.8
+imageio-ffmpeg
