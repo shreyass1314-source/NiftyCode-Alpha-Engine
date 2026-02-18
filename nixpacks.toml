@@ -1,5 +1,7 @@
+
+]
 [phases.setup]
-nixPkgs = ["...", "imagemagick", "ffmpeg"]
+nixPkgs = ["...", "ffmpeg", "imagemagick"]
 
 [phases.build]
 cmds = [
