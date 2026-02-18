@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 import os
 
-# Set paths for Railway environment
+# Updated paths for Railway's Nixpacks environment
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
-os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"
+os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/magick"
 
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
@@ -12,16 +12,15 @@ app = FastAPI()
 
 @app.get("/")
 def home():
-    return {"status": "Alpha Engine Online"}
+    return {"status": "Alpha Engine Active"}
 
 @app.get("/generate")
 def create_video(nifty_support: str, trigger: str, target: str):
-    # Load background
     video = VideoFileClip("nifty_bg.mp4").subclip(0, 10)
     
-    # Using 'Courier' font as it is a default system font on Linux
+    # Using a simplified text generation to avoid permission errors
     def make_txt(val, color, pos_y):
-        return TextClip(val, fontsize=70, color=color, font='Courier').set_position(('center', pos_y)).set_duration(10)
+        return TextClip(val, fontsize=60, color=color, font='Arial').set_position(('center', pos_y)).set_duration(10)
 
     txt_s = make_txt(f"Support: {nifty_support}", "white", 400)
     txt_tr = make_txt(f"Trigger: {trigger}", "yellow", 550)
