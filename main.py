@@ -3,15 +3,21 @@ from fastapi.responses import FileResponse
 import os
 import shutil
 
-# Dynamic Tool Detection
-os.environ["IMAGEIO_FFMPEG_EXE"] = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
-os.environ["IMAGEMAGICK_BINARY"] = shutil.which("magick") or shutil.which("convert") or "/usr/bin/convert"
+# DYNAMIC TOOL SEARCH
+# This searches the server for 'magick' or 'convert' automatically
+magick_path = shutil.which("magick") or shutil.which("convert")
+if magick_path:
+    os.environ["IMAGEMAGICK_BINARY"] = magick_path
+else:
+    # Backup common Linux paths
+    for path in ["/usr/bin/convert", "/usr/local/bin/convert", "/usr/bin/magick"]:
+        if os.path.exists(path):
+            os.environ["IMAGEMAGICK_BINARY"] = path
+            break
 
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
 app = FastAPI()
-
-# Track if the engine is busy
 engine_status = {"busy": False, "error": None}
 
 def render_task(nifty_support, trigger, target):
@@ -19,6 +25,7 @@ def render_task(nifty_support, trigger, target):
         engine_status["busy"] = True
         video = VideoFileClip("nifty_bg.mp4").subclip(0, 10)
         
+        # Using a very basic font to ensure it doesn't crash on font missing
         def make_txt(val, color, pos_y):
             return TextClip(val, fontsize=60, color=color, font='Arial').set_position(('center', pos_y)).set_duration(10)
 
@@ -27,7 +34,6 @@ def render_task(nifty_support, trigger, target):
         txt_ta = make_txt(f"Target: {target}", "lightgreen", 700)
         
         final = CompositeVideoClip([video, txt_s, txt_tr, txt_ta])
-        # Threads=4 speeds up the render significantly
         final.write_videofile("output.mp4", fps=24, codec="libx264", audio=False, logger=None, threads=4)
         engine_status["busy"] = False
     except Exception as e:
@@ -36,20 +42,20 @@ def render_task(nifty_support, trigger, target):
 
 @app.get("/")
 def home():
-    status_msg = "Engine Ready" if not engine_status["busy"] else "Engine is currently rendering video..."
-    return {"status": status_msg, "error": engine_status["error"]}
+    return {
+        "status": "Ready" if not engine_status["busy"] else "Rendering...",
+        "magick_path": os.environ.get("IMAGEMAGICK_BINARY", "NOT FOUND"),
+        "last_error": engine_status["error"]
+    }
 
 @app.get("/generate")
 def start_render(nifty_support: str, trigger: str, target: str, background_tasks: BackgroundTasks):
-    if engine_status["busy"]:
-        return {"message": "Engine is currently busy. Please wait 1 minute."}
-    
-    # This starts the render in the background immediately
+    if engine_status["busy"]: return {"message": "Busy"}
     background_tasks.add_task(render_task, nifty_support, trigger, target)
-    return {"message": "Video generation STARTED. Refresh home page in 60 seconds to check status."}
+    return {"message": "STARTED"}
 
 @app.get("/download")
 def download():
     if os.path.exists("output.mp4"):
         return FileResponse("output.mp4", media_type="video/mp4", filename="Nifty_Update.mp4")
-    return {"error": "Video not found. Please run /generate first."}
+    return {"error": "Not found"}
