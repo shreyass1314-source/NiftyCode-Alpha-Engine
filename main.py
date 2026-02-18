@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse
 import os
 import shutil
 
-# Tool Detection
+# Dynamic Tool Detection
 os.environ["IMAGEIO_FFMPEG_EXE"] = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 os.environ["IMAGEMAGICK_BINARY"] = shutil.which("magick") or shutil.which("convert") or "/usr/bin/convert"
 
@@ -11,12 +11,12 @@ from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
 app = FastAPI()
 
-# Global status to track if the engine is busy
-status = {"generating": False, "last_error": None}
+# Track if the engine is busy
+engine_status = {"busy": False, "error": None}
 
-def process_video(nifty_support, trigger, target):
+def render_task(nifty_support, trigger, target):
     try:
-        status["generating"] = True
+        engine_status["busy"] = True
         video = VideoFileClip("nifty_bg.mp4").subclip(0, 10)
         
         def make_txt(val, color, pos_y):
@@ -27,29 +27,29 @@ def process_video(nifty_support, trigger, target):
         txt_ta = make_txt(f"Target: {target}", "lightgreen", 700)
         
         final = CompositeVideoClip([video, txt_s, txt_tr, txt_ta])
-        # Force high speed rendering
+        # Threads=4 speeds up the render significantly
         final.write_videofile("output.mp4", fps=24, codec="libx264", audio=False, logger=None, threads=4)
-        status["generating"] = False
+        engine_status["busy"] = False
     except Exception as e:
-        status["last_error"] = str(e)
-        status["generating"] = False
+        engine_status["error"] = str(e)
+        engine_status["busy"] = False
 
 @app.get("/")
 def home():
-    msg = "Ready" if not status["generating"] else "Processing Video..."
-    return {"status": msg, "error": status["last_error"]}
+    status_msg = "Engine Ready" if not engine_status["busy"] else "Engine is currently rendering video..."
+    return {"status": status_msg, "error": engine_status["error"]}
 
 @app.get("/generate")
-def start_generation(nifty_support: str, trigger: str, target: str, background_tasks: BackgroundTasks):
-    if status["generating"]:
-        return {"message": "Engine is already busy. Wait 1 minute."}
+def start_render(nifty_support: str, trigger: str, target: str, background_tasks: BackgroundTasks):
+    if engine_status["busy"]:
+        return {"message": "Engine is currently busy. Please wait 1 minute."}
     
-    # This starts the render WITHOUT making the browser wait
-    background_tasks.add_task(process_video, nifty_support, trigger, target)
-    return {"message": "Generation started. Refresh the home page in 60 seconds."}
+    # This starts the render in the background immediately
+    background_tasks.add_task(render_task, nifty_support, trigger, target)
+    return {"message": "Video generation STARTED. Refresh home page in 60 seconds to check status."}
 
 @app.get("/download")
 def download():
     if os.path.exists("output.mp4"):
         return FileResponse("output.mp4", media_type="video/mp4", filename="Nifty_Update.mp4")
-    return {"error": "File not found. Generate first."}
+    return {"error": "Video not found. Please run /generate first."}
