@@ -1,11 +1,5 @@
-
-]
 [phases.setup]
-nixPkgs = ["...", "ffmpeg", "imagemagick"]
+nixPkgs = ["python311", "ffmpeg", "imagemagick"]
 
 [phases.build]
-cmds = [
-    "pip install -r requirements.txt",
-    "sed -i 's/rights=\"none\" pattern=\"PDF\"/rights=\"read|write\" pattern=\"PDF\"/g' /etc/ImageMagick-6/policy.xml",
-    "sed -i '/<policy domain=\"path\" rights=\"none\" pattern=\"@\\*\"\\/>/d' /etc/ImageMagick-6/policy.xml"
-]
+cmds = ["pip install -r requirements.txt"]
