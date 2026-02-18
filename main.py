@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 import os
+import shutil
 
-# Updated paths for Railway's Nixpacks environment
-os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
-os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/magick"
+# DYNAMIC PATH DETECTION
+magick_path = shutil.which("magick") or shutil.which("convert")
+if magick_path:
+    os.environ["IMAGEMAGICK_BINARY"] = magick_path
 
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
@@ -12,15 +14,15 @@ app = FastAPI()
 
 @app.get("/")
 def home():
-    return {"status": "Alpha Engine Active"}
+    return {"status": "Engine Online", "magick": os.environ.get("IMAGEMAGICK_BINARY")}
 
 @app.get("/generate")
 def create_video(nifty_support: str, trigger: str, target: str):
     video = VideoFileClip("nifty_bg.mp4").subclip(0, 10)
     
-    # Using a simplified text generation to avoid permission errors
+    # Text overlays - Safe Zone Optimized
     def make_txt(val, color, pos_y):
-        return TextClip(val, fontsize=60, color=color, font='Arial').set_position(('center', pos_y)).set_duration(10)
+        return TextClip(val, fontsize=60, color=color, font='Arial-Bold').set_position(('center', pos_y)).set_duration(10)
 
     txt_s = make_txt(f"Support: {nifty_support}", "white", 400)
     txt_tr = make_txt(f"Trigger: {trigger}", "yellow", 550)
